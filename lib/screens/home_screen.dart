@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 
 import '../models/football_match.dart';
+import 'add_match_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,36 +16,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Object? get waiting => null;
 
-  // List<FootballMatch> footballMatchList = [];
-  //
-  // bool _getFootballMatchesInProgress = false;
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _getFootballMatches();
-  // }
-  //
-  // Future<void> _getFootballMatches() async {
-  //   _getFootballMatchesInProgress = true;
-  //   setState(() {});
-  //
-  //   QuerySnapshot<Map<String, dynamic>> querySnapshot = await FirebaseFirestore
-  //       .instance
-  //       .collection('football')
-  //       .get();
-  //
-  //   for (DocumentSnapshot doc in querySnapshot.docs) {
-  //     footballMatchList.add(
-  //       FootballMatch.fromJson(doc.id, doc.data() as Map<String, dynamic>),
-  //     );
-  //   }
-  //
-  //   _getFootballMatchesInProgress = false;
-  //   setState(() {});
-  // }
 
   @override
   void initState() {
@@ -67,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: StreamBuilder(
         stream: FirebaseFirestore.instance.collection('football').snapshots(),
         builder: (context, snapshots) {
-          if (snapshots.connectionState == waiting) {
+          if (snapshots.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
 
@@ -97,15 +69,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   _onDismissed(match.id);
                 },
                 child: ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddMatchScreen(
+                          footballMatch: match,
+                        ),
+                      ),
+                    );
+                  },
                   leading: CircleAvatar(
                     radius: 8,
-                    backgroundColor: match.isRunning ? Colors.green : Colors.grey,
+                    backgroundColor:
+                    match.isRunning ? Colors.green : Colors.grey,
                   ),
                   title: Text('${match.team1Name} vs ${match.team2Name}'),
                   subtitle: Text('Winner Team: ${match.winnerTeam}'),
                   trailing: Text(
                     '${match.team1Score}-${match.team2Score}',
-                    style: TextStyle(fontSize: 18),
+                    style: const TextStyle(fontSize: 18),
                   ),
                 ),
               );
@@ -115,7 +98,14 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _onTapAddNewMatch,
+        onPressed: (){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AddMatchScreen(),
+            ),
+          );
+        },
         child: Icon(Icons.add),
       ),
     );
@@ -156,9 +146,9 @@ class _HomeScreenState extends State<HomeScreen> {
         .delete();
   }
 
-  void _onTapLogoutButton() {
-    FirebaseCrashlytics.instance.log('on tapped log out button');
-    throw Exception("My custom exception");
-    FirebaseAuth.instance.signOut();
+  Future<void> _onTapLogoutButton() async {
+    FirebaseCrashlytics.instance.log('User logout');
+    await FirebaseAuth.instance.signOut();
   }
 }
+
