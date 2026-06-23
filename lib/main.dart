@@ -1,73 +1,92 @@
+import 'dart:ui';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:live_score_app/screens/home_screen.dart';
-import 'package:live_score_app/screens/sign_in_screen.dart';
 
 import 'analytics_route_observer.dart';
 import 'crashlytics-route_observer.dart';
 import 'fcm_utils.dart';
 import 'firebase_options.dart';
+import 'screens/add_match_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/sign_in_screen.dart';
 import 'screens/sign_up_screen.dart';
 
 Future<void> main() async {
-  // Ensure initialization
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Initialize Firebase only once
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
-  // Pass all uncaught "fatal" errors from the framework to Crashlytics
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  // Crashlytics
+  FlutterError.onError =
+      FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-  // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
   PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    FirebaseCrashlytics.instance.recordError(
+      error,
+      stack,
+      fatal: true,
+    );
     return true;
   };
 
+  // FCM Setup
   await FcmUtils.initialize();
 
-  print(await FcmUtils.getFcmToken());
+  final String? token = await FcmUtils.getFcmToken();
+  debugPrint('FCM Token: $token');
 
   FcmUtils.onRefreshToken();
 
-  runApp(const TodoApp());
+  runApp(const LiveScoreApp());
 }
 
-class TodoApp extends StatelessWidget {
-  const TodoApp({super.key});
+class LiveScoreApp extends StatelessWidget {
+  const LiveScoreApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Live Score App',
       debugShowCheckedModeBanner: false,
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, AsyncSnapshot<User?> snapshot) {
-          // While in progress
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          // When stream hase data(User object)
-          if (snapshot.hasData) {
-            return const HomeScreen();
-          }
-          // When stream is null
-          return const SignInScreen();
-        },
-      ),
+
       navigatorObservers: [
         CrashlyticsRouteObserver(),
         AnalyticsRouteObserver(),
       ],
+
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState ==
+              ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
+          if (snapshot.hasData) {
+            return const HomeScreen();
+          }
+
+          return const SignInScreen();
+        },
+      ),
+
       routes: {
+        '/home': (_) => const HomeScreen(),
         '/sign-in': (_) => const SignInScreen(),
         '/sign-up': (_) => const SignUpScreen(),
-        '/home': (_) => const HomeScreen(),
+        '/add-match': (_) => const AddMatchScreen(),
       },
     );
   }
